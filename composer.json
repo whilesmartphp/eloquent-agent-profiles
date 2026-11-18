@@ -1,0 +1,54 @@
+{
+    "name": "whilesmart/eloquent-agent-profiles",
+    "description": "Owner-scoped agent definitions for Laravel: strict bounded drafts, pinned managed skills, immutable published versions and fail-closed activation.",
+    "type": "library",
+    "version": "1.0.0",
+    "license": "MIT",
+    "authors": [
+        { "name": "Whilesmart Team" }
+    ],
+    "repositories": [
+        { "type": "vcs", "url": "https://github.com/whilesmartphp/skillpack" },
+        { "type": "vcs", "url": "https://github.com/whilesmartphp/eloquent-skills" }
+    ],
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^11.0|^12.0",
+        "whilesmart/eloquent-owner-access": "^1.0",
+        "whilesmart/eloquent-skills": "dev-feat/initial-package|^1.0",
+        "whilesmart/skillpack": "dev-feat/initial-package|^1.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0|^10.0",
+        "laravel/pint": "^1.22"
+    },
+    "config": {
+        "platform": {
+            "php": "8.2"
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Whilesmart\\AgentProfiles\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Whilesmart\\AgentProfiles\\AgentProfilesServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/testbench package:test",
+        "pint": ["./vendor/bin/pint"],
+        "pint:test": ["./vendor/bin/pint --test"]
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
