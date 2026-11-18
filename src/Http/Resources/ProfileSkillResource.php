@@ -15,8 +15,8 @@ class ProfileSkillResource extends JsonResource
         $row = (array) $this->resource;
 
         return [
-            'skill_id' => $row['skill_public_id'] ?? null,
-            'skill_version_id' => $row['skill_version_public_id'] ?? null,
+            'skill_id' => $row['skill_uuid'] ?? null,
+            'skill_version_id' => $row['skill_version_uuid'] ?? null,
             'name' => $row['name'] ?? null,
             'number' => $row['number'] ?? null,
             'content_hash' => $row['content_hash'] ?? null,

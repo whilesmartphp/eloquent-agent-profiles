@@ -1,5 +1,5 @@
 ## [1.0.0] - 2026-11-18
-- Owner-scoped `AgentProfile` drafts with public UUIDs, `scope_key` isolation, revision-checked edits and soft delete
+- Owner-scoped `AgentProfile` drafts with UUIDs, `scope_key` isolation, revision-checked edits and soft delete
 - Strict, bounded definition schema covering purpose, personality, instructions, structured rules, skill references, resources, model policy, permission ceiling and limits; unknown keys are rejected
 - Configurable capability validators for tools, rule evaluators, resource types and model providers that deny anything the host has not declared
 - Managed skills bound through the shared `HasSkills` trait and pinned at publication via `SkillVersionResolver` with the profile's owner and scope

@@ -40,9 +40,9 @@ final class ExecutionManifest
     public function toArray(): array
     {
         return [
-            'profile_id' => $this->profile->public_id,
+            'profile_id' => $this->profile->uuid,
             'version' => $this->version->number,
-            'version_id' => $this->version->public_id,
+            'version_id' => $this->version->uuid,
             'manifest_hash' => $this->version->manifest_hash,
             'definition' => $this->definition,
             'rules' => $this->rules,

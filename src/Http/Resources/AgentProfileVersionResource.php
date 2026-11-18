@@ -17,8 +17,8 @@ class AgentProfileVersionResource extends JsonResource
         $state = $this->state;
 
         return [
-            'id' => $this->public_id,
-            'profile_id' => $this->manifest['profile']['public_id'] ?? null,
+            'id' => $this->uuid,
+            'profile_id' => $this->manifest['profile']['uuid'] ?? null,
             'number' => (int) $this->number,
             'status' => ($state?->status ?? VersionStatus::Inactive)->value,
             'source_revision' => (int) $this->source_revision,

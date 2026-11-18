@@ -14,14 +14,15 @@ return new class extends Migration
 
         Schema::create($profiles, function (Blueprint $table) {
             $table->id();
-            $table->uuid('public_id')->unique();
+            $table->uuid('uuid')->unique();
+            $table->string('slug', 220)->unique();
             $table->string('owner_type');
             $table->string('owner_id', 64);
             $table->string('scope_key', 100)->default('default');
             $table->string('name', 160);
             $table->text('description')->nullable();
-            $table->unsignedInteger('draft_revision')->default(1);
-            $table->json('draft_definition');
+            $table->unsignedInteger('revision')->default(1);
+            $table->json('definition');
             $table->json('metadata')->nullable();
             $table->timestamps();
             $table->softDeletes();
@@ -31,7 +32,7 @@ return new class extends Migration
 
         Schema::create($versions, function (Blueprint $table) use ($profiles) {
             $table->id();
-            $table->uuid('public_id')->unique();
+            $table->uuid('uuid')->unique();
             $table->foreignId('agent_profile_id')->constrained($profiles)->cascadeOnDelete();
             $table->unsignedInteger('number');
             $table->unsignedInteger('source_revision');

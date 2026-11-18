@@ -20,6 +20,10 @@ class OwnerAccessProfileAuthorizer implements ProfileAuthorizer
 
     public function authorize(?Authenticatable $actor, string $ability, string $ownerType, string $ownerId, string $scopeKey): bool
     {
+        if ($scopeKey !== (string) config('agent-profiles.default_scope_key', 'default')) {
+            return false;
+        }
+
         $owners = $this->owners();
 
         if ($actor === null || $owners === null) {
@@ -37,7 +41,8 @@ class OwnerAccessProfileAuthorizer implements ProfileAuthorizer
             return $query->whereRaw('1 = 0');
         }
 
-        return $owners->scope($query, $actor, 'owner_type', 'owner_id');
+        return $owners->scope($query, $actor, 'owner_type', 'owner_id')
+            ->where($query->getModel()->qualifyColumn('scope_key'), (string) config('agent-profiles.default_scope_key', 'default'));
     }
 
     protected function owners(): ?OwnerAuthorizer

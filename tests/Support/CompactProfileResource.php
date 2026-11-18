@@ -9,6 +9,6 @@ class CompactProfileResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        return ['ref' => $this->public_id, 'label' => $this->name];
+        return ['ref' => $this->uuid, 'label' => $this->name];
     }
 }

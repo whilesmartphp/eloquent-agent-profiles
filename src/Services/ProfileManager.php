@@ -41,7 +41,7 @@ class ProfileManager
             'scope_key' => $scopeKey,
             'name' => $attributes['name'],
             'description' => $attributes['description'] ?? null,
-            'draft_definition' => $this->definition($attributes['definition'] ?? []),
+            'definition' => $this->definition($attributes['definition'] ?? []),
             'metadata' => $attributes['metadata'] ?? null,
         ]);
 
@@ -62,13 +62,13 @@ class ProfileManager
 
         $changes = array_intersect_key($attributes, array_flip(['name', 'description', 'metadata']));
         if (array_key_exists('definition', $attributes)) {
-            $changes['draft_definition'] = $this->definition($attributes['definition'] ?? []);
+            $changes['definition'] = $this->definition($attributes['definition'] ?? []);
         }
 
         return DB::transaction(function () use ($profile, $expectedRevision, $changes, $actor) {
             $locked = $this->lock($profile, $expectedRevision);
             $locked->fill($changes);
-            $locked->draft_revision = $locked->draft_revision + 1;
+            $locked->revision = $locked->revision + 1;
             $locked->save();
 
             event(new AgentProfileDraftUpdated($locked, $actor));
@@ -87,26 +87,26 @@ class ProfileManager
         });
     }
 
-    public function bindSkill(AgentProfile $profile, int $expectedRevision, string $versionPublicId, ?Authenticatable $actor): AgentProfile
+    public function bindSkill(AgentProfile $profile, int $expectedRevision, string $versionUuid, ?Authenticatable $actor): AgentProfile
     {
         $this->gate->ensure($actor, 'bind-skills', $profile);
 
-        return DB::transaction(function () use ($profile, $expectedRevision, $versionPublicId, $actor) {
+        return DB::transaction(function () use ($profile, $expectedRevision, $versionUuid, $actor) {
             $locked = $this->lock($profile, $expectedRevision);
-            $this->skills->bind($locked, $versionPublicId, $actor);
+            $this->skills->bind($locked, $versionUuid, $actor);
 
             return $locked->refresh();
         });
     }
 
-    public function unbindSkill(AgentProfile $profile, int $expectedRevision, string $skillPublicId, ?Authenticatable $actor): AgentProfile
+    public function unbindSkill(AgentProfile $profile, int $expectedRevision, string $skillUuid, ?Authenticatable $actor): AgentProfile
     {
         $this->gate->ensure($actor, 'bind-skills', $profile);
 
-        return DB::transaction(function () use ($profile, $expectedRevision, $skillPublicId, $actor) {
+        return DB::transaction(function () use ($profile, $expectedRevision, $skillUuid, $actor) {
             $locked = $this->lock($profile, $expectedRevision);
 
-            $this->skills->unbind($locked, $skillPublicId, $actor);
+            $this->skills->unbind($locked, $skillUuid, $actor);
 
             return $locked->refresh();
         });
@@ -132,8 +132,8 @@ class ProfileManager
         /** @var AgentProfile $locked */
         $locked = $profile->newQuery()->whereKey($profile->getKey())->lockForUpdate()->firstOrFail();
 
-        if ($locked->draft_revision !== $expectedRevision) {
-            throw new StaleRevision($expectedRevision, $locked->draft_revision);
+        if ($locked->revision !== $expectedRevision) {
+            throw new StaleRevision($expectedRevision, $locked->revision);
         }
 
         return $locked;

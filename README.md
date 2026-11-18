@@ -12,7 +12,7 @@ The package is unreleased. Install the implementation branches from GitHub:
 composer config repositories.skillpack vcs https://github.com/whilesmartphp/skillpack
 composer config repositories.eloquent-skills vcs https://github.com/whilesmartphp/eloquent-skills
 composer config repositories.eloquent-agent-profiles vcs https://github.com/whilesmartphp/eloquent-agent-profiles
-composer require whilesmart/skillpack:dev-feat/initial-package whilesmart/eloquent-skills:dev-feat/initial-package whilesmart/eloquent-agent-profiles:dev-feat/initial-package
+composer require whilesmart/skillpack:dev-dev whilesmart/eloquent-skills:dev-feat/initial-package whilesmart/eloquent-agent-profiles:dev-feat/initial-package
 php artisan migrate
 ```
 
@@ -43,7 +43,7 @@ A draft definition is a JSON object. Every object rejects keys it does not decla
     "action": "block"
   }],
   "skills": [
-    { "source": "managed", "skill": "<skill public id>" },
+    { "source": "managed", "skill": "<skill UUID>" },
     { "source": "house", "reference": "house-style", "skill": "release-notes", "content_hash": "sha256:..." }
   ],
   "resources": [{ "id": "ledger", "type": "database", "reference": "ledger-main", "access": "read" }],
@@ -84,7 +84,7 @@ Resolution throws `ProfileUnavailable` unless the profile exists, the version is
 
 ## API
 
-All routes use `route_prefix` (default `api`) and `route_middleware` (default `api`, `auth:sanctum`). Responses use `{ "success": true, "data": ... }`; failures carry `errors.issues` where relevant. Profiles are addressed by public id.
+All routes use `route_prefix` (default `api`) and `route_middleware` (default `api`, `auth:sanctum`). Responses use `{ "success": true, "data": ... }`; failures carry `errors.issues` where relevant. Profiles are addressed by UUID.
 
 | Method | Path | Does |
 | --- | --- | --- |
@@ -126,3 +126,9 @@ docker compose run --rm app composer pint
 ```
 
 For local work against unreleased sibling packages, put path repositories in an ignored `.composer-local.json`.
+
+The default owner-access bridge allows only the configured `default_scope_key`. Hosts supporting several scopes must supply a scope-aware authorizer that checks both individual operations and listing queries.
+
+`AgentProfile` stores editable `definition` settings and a `revision` counter for concurrent edits. Publishing copies those settings into an immutable version. Profiles have a stable `uuid` and generated `slug`; either resolves the profile route. Slugs remain stable when names change.
+
+Version state is stored separately so activation and revocation can change without updating the published definition or manifest. The state row holds status, transition timestamps, the changing actor, and the revocation reason. It records current lifecycle state, not a transition history.

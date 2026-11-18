@@ -39,7 +39,14 @@ trait ValidatesProfileInput
             $metadata = $this->input('metadata');
             if (is_array($metadata)) {
                 $limit = (int) config('agent-profiles.max_metadata_bytes', 16384);
-                if (strlen((string) json_encode($metadata)) > $limit) {
+                try {
+                    $encoded = json_encode($metadata, JSON_THROW_ON_ERROR);
+                } catch (\JsonException) {
+                    $validator->errors()->add('metadata', 'Metadata must be valid UTF-8 JSON.');
+
+                    return;
+                }
+                if (strlen($encoded) > $limit) {
                     $validator->errors()->add('metadata', "Metadata must encode to at most {$limit} bytes.");
                 }
             }

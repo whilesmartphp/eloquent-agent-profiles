@@ -22,7 +22,7 @@ class AuthorizationTest extends TestCase
         $this->actingAs($member)->postJson('/api/agent-profiles', $this->profilePayload())->assertForbidden();
 
         AgentProfile::query()->create(['owner_type' => self::OWNER, 'owner_id' => '1', 'name' => 'Existing']);
-        $id = AgentProfile::query()->value('public_id');
+        $id = AgentProfile::query()->value('uuid');
 
         $this->actingAs($member)->getJson('/api/agent-profiles')->assertOk()->assertJsonPath('data.meta.total', 0);
         $this->actingAs($member)->getJson("/api/agent-profiles/{$id}")->assertForbidden();
@@ -33,7 +33,7 @@ class AuthorizationTest extends TestCase
     public function guests_are_denied_even_with_a_strict_owner_authorizer(): void
     {
         AgentProfile::query()->create(['owner_type' => self::OWNER, 'owner_id' => '1', 'name' => 'Existing']);
-        $id = AgentProfile::query()->value('public_id');
+        $id = AgentProfile::query()->value('uuid');
 
         $this->getJson("/api/agent-profiles/{$id}")->assertForbidden();
         $this->postJson('/api/agent-profiles', $this->profilePayload())->assertForbidden();

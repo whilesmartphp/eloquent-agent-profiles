@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use Whilesmart\AgentProfiles\Events\AgentProfileCreated;
@@ -12,6 +13,26 @@ use Whilesmart\AgentProfiles\Models\AgentProfile;
 
 class ProfileCrudTest extends TestCase
 {
+    #[Test]
+    public function profiles_expose_uuid_and_slug_and_resolve_both(): void
+    {
+        $member = $this->memberOf(1);
+        $profile = $this->createProfile($member);
+        $this->assertTrue(Str::isUuid($profile['uuid']));
+        $this->assertSame($profile['id'], $profile['uuid']);
+        $this->assertStringStartsWith('billing-assistant-', $profile['slug']);
+        $this->actingAs($member)->getJson('/api/agent-profiles/'.$profile['slug'])->assertOk()->assertJsonPath('data.uuid', $profile['uuid']);
+    }
+
+    #[Test]
+    public function invalid_utf8_metadata_in_form_input_is_rejected(): void
+    {
+        $member = $this->memberOf(1);
+        $this->actingAs($member)->post('/api/agent-profiles', $this->profilePayload(['metadata' => ['text' => "\xff"]]), ['Accept' => 'application/json'])
+            ->assertUnprocessable()->assertJsonValidationErrors('metadata');
+        $this->assertDatabaseCount('agent_profiles', 0);
+    }
+
     #[Test]
     public function a_member_creates_a_profile_with_a_normalized_draft(): void
     {
@@ -110,13 +131,18 @@ class ProfileCrudTest extends TestCase
         $member = $this->memberOf(1);
         $other = $this->memberOf(2);
         $this->createProfile($member, ['name' => 'Default scope']);
-        $this->createProfile($member, ['name' => 'Staging scope', 'scope_key' => 'staging']);
+        config(['agent-profiles.default_scope_key' => 'staging']);
+        $staging = $this->createProfile($member, ['name' => 'Staging scope', 'scope_key' => 'staging']);
+        config(['agent-profiles.default_scope_key' => 'default']);
+        $this->actingAs($member)->getJson("/api/agent-profiles/{$staging['id']}")->assertForbidden();
         $this->createProfile($other, ['owner_id' => 2, 'name' => 'Other owner']);
 
         $this->actingAs($member)->getJson('/api/agent-profiles')
             ->assertOk()
-            ->assertJsonPath('data.meta.total', 2);
+            ->assertJsonPath('data.meta.total', 1);
 
+        $this->actingAs($member)->getJson('/api/agent-profiles?scope_key=staging')->assertJsonPath('data.meta.total', 0);
+        config(['agent-profiles.default_scope_key' => 'staging']);
         $this->actingAs($member)->getJson('/api/agent-profiles?scope_key=staging')
             ->assertOk()
             ->assertJsonPath('data.meta.total', 1)
@@ -133,7 +159,7 @@ class ProfileCrudTest extends TestCase
         $this->actingAs($member)->deleteJson("/api/agent-profiles/{$profile['id']}")->assertOk();
         $this->actingAs($member)->getJson("/api/agent-profiles/{$profile['id']}")->assertNotFound();
 
-        $this->assertSoftDeleted('agent_profiles', ['public_id' => $profile['id']]);
+        $this->assertSoftDeleted('agent_profiles', ['uuid' => $profile['id']]);
         Event::assertDispatched(AgentProfileDeleted::class);
     }
 

@@ -36,8 +36,8 @@ class ProfilePublisher
             $this->gate->ensure($actor, 'activate', $profile);
         }
 
-        if ((int) $profile->draft_revision !== $expectedRevision) {
-            throw new StaleRevision($expectedRevision, (int) $profile->draft_revision);
+        if ((int) $profile->revision !== $expectedRevision) {
+            throw new StaleRevision($expectedRevision, (int) $profile->revision);
         }
 
         $plan = $this->planner->plan($profile, $actor);
@@ -49,8 +49,8 @@ class ProfilePublisher
             /** @var AgentProfile $locked */
             $locked = $profile->newQuery()->whereKey($profile->getKey())->lockForUpdate()->firstOrFail();
 
-            if ($locked->draft_revision !== $expectedRevision || $locked->draft_revision !== $plan->revision) {
-                throw new StaleRevision($expectedRevision, $locked->draft_revision);
+            if ($locked->revision !== $expectedRevision || $locked->revision !== $plan->revision) {
+                throw new StaleRevision($expectedRevision, $locked->revision);
             }
 
             $number = (int) $locked->versions()->max('number') + 1;
@@ -58,7 +58,7 @@ class ProfilePublisher
             $manifest = [
                 'schema' => self::MANIFEST_SCHEMA,
                 'profile' => [
-                    'public_id' => $locked->public_id,
+                    'uuid' => $locked->uuid,
                     'owner_type' => $locked->owner_type,
                     'owner_id' => (string) $locked->owner_id,
                     'scope_key' => $locked->scope_key,

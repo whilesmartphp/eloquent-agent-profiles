@@ -21,14 +21,14 @@ use Whilesmart\Skills\Traits\HasSkills;
 
 /**
  * @property int $id
- * @property string $public_id
+ * @property string $uuid
  * @property string $owner_type
  * @property string $owner_id
  * @property string $scope_key
  * @property string $name
  * @property ?string $description
- * @property int $draft_revision
- * @property array<string, mixed> $draft_definition
+ * @property int $revision
+ * @property array<string, mixed> $definition
  * @property ?array<string, mixed> $metadata
  */
 class AgentProfile extends Model
@@ -45,20 +45,20 @@ class AgentProfile extends Model
         'scope_key',
         'name',
         'description',
-        'draft_definition',
+        'definition',
         'metadata',
     ];
 
     protected $attributes = [
-        'draft_revision' => 1,
+        'revision' => 1,
     ];
 
     protected function casts(): array
     {
         return [
             'owner_id' => 'string',
-            'draft_revision' => 'integer',
-            'draft_definition' => 'array',
+            'revision' => 'integer',
+            'definition' => 'array',
             'metadata' => 'array',
         ];
     }
@@ -71,9 +71,10 @@ class AgentProfile extends Model
     protected static function booted(): void
     {
         static::creating(function (AgentProfile $profile) {
-            $profile->public_id = $profile->public_id ?: (string) Str::uuid();
+            $profile->uuid = $profile->uuid ?: (string) Str::uuid();
+            $profile->slug = $profile->slug ?: (Str::slug($profile->name) ?: 'agent').'-'.$profile->uuid;
             $profile->scope_key = $profile->scope_key ?: (string) config('agent-profiles.default_scope_key', 'default');
-            $profile->draft_definition = $profile->draft_definition ?? [];
+            $profile->definition = $profile->definition ?? [];
         });
     }
 
@@ -82,13 +83,13 @@ class AgentProfile extends Model
         return DB::transaction(function () use ($version, $actor) {
             $locked = $this->newQuery()->whereKey($this->getKey())->lockForUpdate()->firstOrFail();
             app(ProfileGate::class)->ensure($actor, 'bind-skills', $locked);
-            if ($locked->draft_revision !== $this->draft_revision) {
-                throw new StaleRevision($this->draft_revision, $locked->draft_revision);
+            if ($locked->revision !== $this->revision) {
+                throw new StaleRevision($this->revision, $locked->revision);
             }
             $binding = $locked->assignPinnedSkillVersion($version, $actor);
-            $locked->draft_revision++;
+            $locked->revision++;
             $locked->save();
-            $this->draft_revision = $locked->draft_revision;
+            $this->revision = $locked->revision;
             event(new AgentProfileSkillsChanged($locked, $actor));
 
             return $binding;
@@ -100,14 +101,14 @@ class AgentProfile extends Model
         return DB::transaction(function () use ($skill, $actor) {
             $locked = $this->newQuery()->whereKey($this->getKey())->lockForUpdate()->firstOrFail();
             app(ProfileGate::class)->ensure($actor, 'bind-skills', $locked);
-            if ($locked->draft_revision !== $this->draft_revision) {
-                throw new StaleRevision($this->draft_revision, $locked->draft_revision);
+            if ($locked->revision !== $this->revision) {
+                throw new StaleRevision($this->revision, $locked->revision);
             }
             $removed = $locked->detachPinnedSkill($skill, $actor);
             if ($removed) {
-                $locked->draft_revision++;
+                $locked->revision++;
                 $locked->save();
-                $this->draft_revision = $locked->draft_revision;
+                $this->revision = $locked->revision;
                 event(new AgentProfileSkillsChanged($locked, $actor));
             }
 

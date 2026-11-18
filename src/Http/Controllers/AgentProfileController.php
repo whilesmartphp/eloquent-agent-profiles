@@ -119,7 +119,7 @@ class AgentProfileController extends Controller
             $profile = $this->profiles->bindSkill($agent_profile, (int) $request->input('revision'), (string) $request->input('skill_version_id'), $request->user());
 
             return $this->responses->success([
-                'revision' => (int) $profile->draft_revision,
+                'revision' => (int) $profile->revision,
                 'skills' => $this->resourceClass('skill')::collection($this->skills->bindings($profile, $request->user())),
             ], 201);
         });
@@ -132,7 +132,7 @@ class AgentProfileController extends Controller
         return $this->attempt(function () use ($request, $agent_profile, $skill) {
             $profile = $this->profiles->unbindSkill($agent_profile, (int) $request->input('revision'), $skill, $request->user());
 
-            return $this->responses->success(['revision' => (int) $profile->draft_revision]);
+            return $this->responses->success(['revision' => (int) $profile->revision]);
         });
     }
 

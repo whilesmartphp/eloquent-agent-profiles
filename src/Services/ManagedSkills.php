@@ -27,11 +27,11 @@ class ManagedSkills
 {
     public function __construct(protected SkillVersionResolver $resolver) {}
 
-    public function resolve(AgentProfile $profile, string $versionPublicId, ?Authenticatable $actor): SkillVersion
+    public function resolve(AgentProfile $profile, string $versionUuid, ?Authenticatable $actor): SkillVersion
     {
         try {
             $version = $this->resolver->resolve(
-                $versionPublicId,
+                $versionUuid,
                 (string) $profile->owner_type,
                 (string) $profile->owner_id,
                 (string) $profile->scope_key,
@@ -53,7 +53,7 @@ class ManagedSkills
      */
     public function resolvePinned(AgentProfile $profile, array $pin, ?Authenticatable $actor): SkillVersion
     {
-        $version = $this->resolve($profile, (string) ($pin['skill_version_public_id'] ?? ''), $actor);
+        $version = $this->resolve($profile, (string) ($pin['skill_version_uuid'] ?? ''), $actor);
 
         if ((string) $version->getKey() !== (string) ($pin['skill_version_id'] ?? '')
             || ! hash_equals((string) ($pin['content_hash'] ?? ''), (string) $version->content_hash)) {
@@ -63,9 +63,9 @@ class ManagedSkills
         return $version;
     }
 
-    public function bind(AgentProfile $profile, string $versionPublicId, ?Authenticatable $actor): SkillBinding
+    public function bind(AgentProfile $profile, string $versionUuid, ?Authenticatable $actor): SkillBinding
     {
-        $version = $this->resolve($profile, $versionPublicId, $actor);
+        $version = $this->resolve($profile, $versionUuid, $actor);
 
         try {
             return $profile->assignSkillVersion($version, $actor);
@@ -76,9 +76,9 @@ class ManagedSkills
         }
     }
 
-    public function unbind(AgentProfile $profile, string $skillPublicId, ?Authenticatable $actor): bool
+    public function unbind(AgentProfile $profile, string $skillUuid, ?Authenticatable $actor): bool
     {
-        $skill = SkillsConfig::query('skill')->where('public_id', $skillPublicId)->first();
+        $skill = SkillsConfig::query('skill')->where('uuid', $skillUuid)->first();
 
         if ($skill === null) {
             return false;
@@ -99,13 +99,13 @@ class ManagedSkills
 
         foreach ($profile->skillBindings()->get() as $index => $binding) {
             $path = "skills.bindings.{$index}";
-            $publicId = SkillsConfig::query('version')->whereKey($binding->skill_version_id)->value('public_id');
+            $uuid = SkillsConfig::query('version')->whereKey($binding->skill_version_id)->value('uuid');
 
             try {
-                if ($publicId === null) {
+                if ($uuid === null) {
                     throw SkillUnavailable::make();
                 }
-                $version = $this->resolve($profile, (string) $publicId, $actor);
+                $version = $this->resolve($profile, (string) $uuid, $actor);
             } catch (SkillUnavailable $e) {
                 $issues[] = Issue::error('skill_unavailable', 'A bound skill version is not available to this profile: '.$e->getMessage(), $path);
 
@@ -141,15 +141,15 @@ class ManagedSkills
 
             if ($version !== null) {
                 try {
-                    $available = (string) $this->resolve($profile, (string) $version->public_id, $actor)->getKey() === (string) $version->getKey();
+                    $available = (string) $this->resolve($profile, (string) $version->uuid, $actor)->getKey() === (string) $version->getKey();
                 } catch (SkillUnavailable) {
                     $available = false;
                 }
             }
 
             $rows[] = ($version ? $this->describe($version) : [
-                'skill_public_id' => null,
-                'skill_version_public_id' => null,
+                'skill_uuid' => null,
+                'skill_version_uuid' => null,
                 'skill_version_id' => (string) $binding->skill_version_id,
                 'name' => null,
                 'number' => null,
@@ -166,8 +166,8 @@ class ManagedSkills
     public function describe(SkillVersion $version): array
     {
         return [
-            'skill_public_id' => (string) SkillsConfig::query('skill')->whereKey($version->skill_id)->value('public_id'),
-            'skill_version_public_id' => (string) $version->public_id,
+            'skill_uuid' => (string) SkillsConfig::query('skill')->whereKey($version->skill_id)->value('uuid'),
+            'skill_version_uuid' => (string) $version->uuid,
             'skill_version_id' => (string) $version->getKey(),
             'name' => (string) $version->name,
             'number' => (int) $version->number,

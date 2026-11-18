@@ -28,8 +28,8 @@ class PublicationPlanner
 
     public function plan(AgentProfile $profile, ?Authenticatable $actor): PublicationPlan
     {
-        $revision = (int) $profile->draft_revision;
-        $raw = $profile->draft_definition ?? [];
+        $revision = (int) $profile->revision;
+        $raw = $profile->definition ?? [];
         $issues = $this->schema->validate($raw);
 
         if (Issue::anyErrors($issues)) {
@@ -52,7 +52,7 @@ class PublicationPlanner
         [$managed, $managedIssues] = $this->managed->pin($profile, $actor);
         array_push($issues, ...$managedIssues);
 
-        $bound = array_column($managed, 'skill_public_id');
+        $bound = array_column($managed, 'skill_uuid');
         $external = [];
         $snapshots = [];
 

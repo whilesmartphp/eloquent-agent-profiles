@@ -56,7 +56,7 @@ class AgentProfilesServiceProvider extends ServiceProvider
             $this->validateHttpClasses();
 
             $model = config('agent-profiles.models.profile');
-            Route::bind('agent_profile', fn (string $value) => $model::query()->where('public_id', $value)->firstOrFail());
+            Route::bind('agent_profile', fn (string $value) => $model::query()->where(fn ($query) => $query->where('uuid', $value)->orWhere('slug', $value))->firstOrFail());
 
             Route::middleware(config('agent-profiles.route_middleware', ['api', 'auth:sanctum']))
                 ->prefix(config('agent-profiles.route_prefix', 'api'))

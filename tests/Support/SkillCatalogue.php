@@ -13,6 +13,8 @@ final class SkillCatalogue
     {
         $actor = $this->test->catalogueActor($ownerType, $ownerId);
         $current = auth()->user();
+        $previousScope = config('skills.default_scope_key');
+        config(['skills.default_scope_key' => $scopeKey]);
         try {
             $skill = $this->test->actingAs($actor)->postJson('/api/skills', [
                 'owner_type' => $ownerType,
@@ -22,8 +24,9 @@ final class SkillCatalogue
             ])->assertCreated()->json('data.id');
             $id = $this->test->postJson("/api/skills/{$skill}/publish", ['draft_revision' => 1])->assertCreated()->json('data.id');
 
-            return SkillVersion::query()->where('public_id', $id)->firstOrFail();
+            return SkillVersion::query()->where('uuid', $id)->firstOrFail();
         } finally {
+            config(['skills.default_scope_key' => $previousScope]);
             if ($current !== null) {
                 $this->test->actingAs($current);
             }
@@ -36,7 +39,7 @@ final class SkillCatalogue
         $actor = $this->test->catalogueActor($skill->owner_type, $skill->owner_id);
         $current = auth()->user();
         try {
-            $this->test->actingAs($actor)->postJson("/api/skills/{$skill->public_id}/versions/{$version->public_id}/revoke")->assertOk();
+            $this->test->actingAs($actor)->postJson("/api/skills/{$skill->uuid}/versions/{$version->uuid}/revoke")->assertOk();
         } finally {
             if ($current !== null) {
                 $this->test->actingAs($current);
@@ -50,7 +53,7 @@ final class SkillCatalogue
         $actor = $this->test->catalogueActor($skill->owner_type, $skill->owner_id);
         $current = auth()->user();
         try {
-            $this->test->actingAs($actor)->deleteJson("/api/skills/{$skill->public_id}")->assertOk();
+            $this->test->actingAs($actor)->deleteJson("/api/skills/{$skill->uuid}")->assertOk();
         } finally {
             if ($current !== null) {
                 $this->test->actingAs($current);

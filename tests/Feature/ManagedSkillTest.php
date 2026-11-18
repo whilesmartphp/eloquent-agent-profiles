@@ -34,7 +34,7 @@ class ManagedSkillTest extends TestCase
     {
         return $this->actingAs($this->member)->postJson("/api/agent-profiles/{$this->profile['id']}/skills", [
             'revision' => $revision,
-            'skill_version_id' => $version->public_id,
+            'skill_version_id' => $version->uuid,
         ]);
     }
 
@@ -61,8 +61,8 @@ class ManagedSkillTest extends TestCase
 
         $this->publish($this->member, $this->profile['id'], 2, activate: true)
             ->assertCreated()
-            ->assertJsonPath('data.skills.managed.0.skill_version_public_id', $version->public_id)
-            ->assertJsonPath('data.skills.managed.0.skill_public_id', Skill::query()->whereKey($version->skill_id)->value('public_id'))
+            ->assertJsonPath('data.skills.managed.0.skill_version_uuid', $version->uuid)
+            ->assertJsonPath('data.skills.managed.0.skill_uuid', Skill::query()->whereKey($version->skill_id)->value('uuid'))
             ->assertJsonPath('data.skills.managed.0.content_hash', $version->content_hash);
 
         $manifest = app(ExecutionManifestResolver::class)->resolve(AgentProfileVersion::query()->firstOrFail(), $this->member);
@@ -76,15 +76,15 @@ class ManagedSkillTest extends TestCase
     public function direct_trait_assignment_invalidates_stale_http_publication(): void
     {
         $version = $this->catalogue()->version(self::OWNER, 1, 'default', 'refund-policy');
-        $profile = AgentProfile::query()->where('public_id', $this->profile['id'])->firstOrFail();
+        $profile = AgentProfile::query()->where('uuid', $this->profile['id'])->firstOrFail();
         $profile->assignSkillVersion($version, $this->member);
 
-        $this->assertSame(2, $profile->fresh()->draft_revision);
+        $this->assertSame(2, $profile->fresh()->revision);
         $this->publish($this->member, $this->profile['id'], 1)->assertStatus(409);
         $this->publish($this->member, $this->profile['id'], 2)->assertCreated();
 
         $profile->detachSkill($version->skill, $this->member);
-        $this->assertSame(3, $profile->fresh()->draft_revision);
+        $this->assertSame(3, $profile->fresh()->revision);
         $this->publish($this->member, $this->profile['id'], 2)->assertStatus(409);
     }
 
@@ -100,7 +100,7 @@ class ManagedSkillTest extends TestCase
         $this->bind($otherType, 1)->assertUnprocessable();
 
         $this->assertSame(0, AgentProfile::query()->firstOrFail()->skillBindings()->count());
-        $this->assertSame(1, AgentProfile::query()->firstOrFail()->draft_revision);
+        $this->assertSame(1, AgentProfile::query()->firstOrFail()->revision);
     }
 
     #[Test]
@@ -157,7 +157,7 @@ class ManagedSkillTest extends TestCase
     public function definition_managed_refs_must_match_a_binding_and_unbinding_advances_the_revision(): void
     {
         $version = $this->catalogue()->version(self::OWNER, 1, 'default', 'refund-policy');
-        $skillId = Skill::query()->whereKey($version->skill_id)->value('public_id');
+        $skillId = Skill::query()->whereKey($version->skill_id)->value('uuid');
         $base = "/api/agent-profiles/{$this->profile['id']}";
 
         $this->actingAs($this->member)->putJson($base, [

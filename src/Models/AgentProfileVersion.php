@@ -14,7 +14,7 @@ use Whilesmart\AgentProfiles\Support\Canonical;
  * An immutable published snapshot. Activation and revocation live in AgentProfileVersionState.
  *
  * @property int $id
- * @property string $public_id
+ * @property string $uuid
  * @property int $agent_profile_id
  * @property int $number
  * @property int $source_revision
@@ -65,7 +65,7 @@ class AgentProfileVersion extends Model
     protected static function booted(): void
     {
         static::creating(function (AgentProfileVersion $version) {
-            $version->public_id = $version->public_id ?: (string) Str::uuid();
+            $version->uuid = $version->uuid ?: (string) Str::uuid();
         });
 
         static::updating(fn () => throw ImmutableVersion::make());
@@ -84,7 +84,7 @@ class AgentProfileVersion extends Model
 
     public function status(): VersionStatus
     {
-        $status = $this->state()->value('status');
+        $status = $this->state()->first()?->status;
 
         return $status instanceof VersionStatus ? $status : VersionStatus::Inactive;
     }
