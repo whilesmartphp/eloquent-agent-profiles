@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Whilesmart\AgentProfiles\Enums\VersionStatus;
 use Whilesmart\AgentProfiles\Events\AgentProfileSkillsChanged;
 use Whilesmart\AgentProfiles\Exceptions\ImmutableVersion;
 use Whilesmart\AgentProfiles\Exceptions\StaleRevision;
@@ -138,7 +139,7 @@ class AgentProfile extends Model
 
     public function activeVersion(): ?AgentProfileVersion
     {
-        return $this->active_version_id === null ? null : $this->versions()->whereKey($this->active_version_id)->whereNull('revoked_at')->first();
+        return $this->versions()->where('status', VersionStatus::Active->value)->whereNull('revoked_at')->first();
     }
 
     public function scopeForOwner(Builder $query, string $ownerType, int|string $ownerId): Builder

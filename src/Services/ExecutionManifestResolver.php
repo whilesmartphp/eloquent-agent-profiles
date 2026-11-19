@@ -33,7 +33,7 @@ class ExecutionManifestResolver
         $profile = $this->liveProfile($version);
         $this->gate->ensure($actor, 'resolve', $profile);
 
-        if ($version->status() !== VersionStatus::Active) {
+        if ($version->status !== VersionStatus::Active || $version->revoked_at !== null) {
             throw ProfileUnavailable::because('This agent profile version is not active.');
         }
 

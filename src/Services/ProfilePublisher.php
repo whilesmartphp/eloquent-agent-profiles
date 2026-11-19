@@ -4,6 +4,7 @@ namespace Whilesmart\AgentProfiles\Services;
 
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\DB;
+use Whilesmart\AgentProfiles\Enums\VersionStatus;
 use Whilesmart\AgentProfiles\Events\AgentProfileVersionActivated;
 use Whilesmart\AgentProfiles\Events\AgentProfileVersionDeactivated;
 use Whilesmart\AgentProfiles\Events\AgentProfileVersionPublished;
@@ -51,7 +52,7 @@ class ProfilePublisher
             $hash = Canonical::hash($content);
             $version = $locked->versions()->where('content_hash', $hash)->first();
             if ($version !== null) {
-                if ($version->revoked_at !== null) {
+                if ($version->status === VersionStatus::Revoked || $version->revoked_at !== null) {
                     throw InvalidTransition::from('revoked', 'republished');
                 }
                 if (! $version->hasIntactContent()) {
@@ -95,11 +96,10 @@ class ProfilePublisher
             $locked = $this->lock($profile);
             $this->gate->ensure($actor, 'activate', $locked);
             $current = $this->version($locked, $version);
-            if ((string) $locked->active_version_id !== (string) $current->getKey()) {
-                throw InvalidTransition::from($current->status()->value, 'deactivated');
+            if ($current->status !== VersionStatus::Active) {
+                throw InvalidTransition::from($current->status->value, 'deactivated');
             }
-            $locked->active_version_id = null;
-            $locked->save();
+            $current->forceFill(['status' => VersionStatus::Inactive])->save();
             event(new AgentProfileVersionDeactivated($locked, $current, $actor));
 
             return $current;
@@ -112,14 +112,10 @@ class ProfilePublisher
             $locked = $this->lock($profile);
             $this->gate->ensure($actor, 'revoke', $locked);
             $current = $this->version($locked, $version);
-            if ($current->revoked_at !== null) {
+            if ($current->status === VersionStatus::Revoked || $current->revoked_at !== null) {
                 throw InvalidTransition::from('revoked', 'revoked');
             }
-            $current->forceFill(['revoked_at' => now(), 'revocation_reason' => $reason] + Actor::columns($actor, 'revoked_by'))->save();
-            if ((string) $locked->active_version_id === (string) $current->getKey()) {
-                $locked->active_version_id = null;
-                $locked->save();
-            }
+            $current->forceFill(['status' => VersionStatus::Revoked, 'revoked_at' => now(), 'revocation_reason' => $reason] + Actor::columns($actor, 'revoked_by'))->save();
             event(new AgentProfileVersionRevoked($locked, $current, $actor));
 
             return $current;
@@ -128,18 +124,20 @@ class ProfilePublisher
 
     protected function switchActive(AgentProfile $profile, AgentProfileVersion $version, ?Authenticatable $actor): void
     {
-        if ($version->revoked_at !== null) {
+        if ($version->status === VersionStatus::Revoked || $version->revoked_at !== null) {
             throw InvalidTransition::from('revoked', 'activated');
         }
         $issues = $this->manifests->check($version, $actor);
         if ($issues !== []) {
             throw ProfileUnavailable::because('This version cannot be activated while its pinned content is unavailable.', $issues);
         }
-        if ((string) $profile->active_version_id === (string) $version->getKey()) {
+        if ($version->status === VersionStatus::Active) {
             return;
         }
-        $profile->active_version_id = $version->getKey();
-        $profile->save();
+        foreach ($profile->versions()->where('status', VersionStatus::Active->value)->get() as $previous) {
+            $previous->forceFill(['status' => VersionStatus::Inactive])->save();
+        }
+        $version->forceFill(['status' => VersionStatus::Active])->save();
         event(new AgentProfileVersionActivated($profile, $version, $actor));
     }
 

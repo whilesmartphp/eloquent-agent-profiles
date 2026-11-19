@@ -100,6 +100,26 @@ class ConcurrentPublicationTest extends TestCase
     }
 
     #[Test]
+    public function competing_activations_leave_only_one_active_version(): void
+    {
+        $member = $this->memberOf(1);
+        $profile = $this->createProfile($member);
+        $base = '/api/agent-profiles/'.$profile['uuid'];
+        $this->publish($member, $profile['uuid'], 1)->assertCreated();
+        $this->actingAs($member)->putJson($base, ['revision' => 1, 'definition' => $this->readyDefinition(['purpose' => 'Another version'])])->assertOk();
+        $this->publish($member, $profile['uuid'], 2)->assertCreated();
+        [$parent, $childStatus] = $this->race($profile['uuid'],
+            fn () => $this->actingAs($member)->postJson($base.'/versions/1/activate'),
+            fn () => $this->actingAs($member)->postJson($base.'/versions/2/activate'),
+        );
+        $parent->assertOk();
+        $this->assertSame(200, $childStatus);
+        $current = AgentProfile::query()->firstOrFail();
+        $this->assertSame(1, $current->versions()->where('status', 'active')->count());
+        $this->assertSame(2, $current->activeVersion()->number);
+    }
+
+    #[Test]
     public function editing_while_publication_waits_rejects_the_old_revision(): void
     {
         $member = $this->memberOf(1);
@@ -126,6 +146,6 @@ class ConcurrentPublicationTest extends TestCase
         );
         $parent->assertOk();
         $this->assertSame(409, $childStatus);
-        $this->assertNull(AgentProfile::query()->firstOrFail()->active_version_id);
+        $this->assertNull(AgentProfile::query()->firstOrFail()->activeVersion());
     }
 }

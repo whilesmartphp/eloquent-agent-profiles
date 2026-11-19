@@ -23,7 +23,7 @@ class AgentProfileVersionResource extends JsonResource
             'id' => $this->uuid,
             'profile_id' => $this->profile?->uuid,
             'number' => (int) $this->number,
-            'status' => $this->status()->value,
+            'status' => $this->status->value,
             'source_revision' => (int) $this->source_revision,
             'content_hash' => $this->content_hash,
             'definition' => $content['definition'],

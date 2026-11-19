@@ -21,7 +21,6 @@ return new class extends Migration
             $table->string('name', 160);
             $table->text('description')->nullable();
             $table->unsignedInteger('revision')->default(1);
-            $table->unsignedBigInteger('active_version_id')->nullable()->index();
             $table->json('definition');
             $table->json('metadata')->nullable();
             $table->timestamps();
@@ -38,6 +37,7 @@ return new class extends Migration
             $table->unsignedInteger('source_revision');
             $table->json('content');
             $table->string('content_hash', 71);
+            $table->string('status', 20)->default('inactive');
             $table->timestamp('revoked_at')->nullable();
             $table->text('revocation_reason')->nullable();
             $table->string('revoked_by_type')->nullable();
@@ -47,6 +47,7 @@ return new class extends Migration
             $table->timestamp('published_at');
             $table->timestamp('created_at')->nullable();
 
+            $table->index(['agent_profile_id', 'status']);
             $table->unique(['agent_profile_id', 'number']);
             $table->unique(['agent_profile_id', 'content_hash']);
         });

@@ -13,13 +13,15 @@ class AgentProfileVersion extends Model
 {
     public const UPDATED_AT = null;
 
-    private const REVOCATION = ['revoked_at', 'revocation_reason', 'revoked_by_type', 'revoked_by_id'];
+    private const LIFECYCLE = ['status', 'revoked_at', 'revocation_reason', 'revoked_by_type', 'revoked_by_id'];
+
+    protected $attributes = ['status' => 'inactive'];
 
     protected $fillable = ['agent_profile_id', 'number', 'source_revision', 'content', 'content_hash', 'published_by_type', 'published_by_id', 'published_at'];
 
     protected function casts(): array
     {
-        return ['number' => 'integer', 'source_revision' => 'integer', 'content' => 'array', 'published_at' => 'datetime', 'revoked_at' => 'datetime'];
+        return ['status' => VersionStatus::class, 'number' => 'integer', 'source_revision' => 'integer', 'content' => 'array', 'published_at' => 'datetime', 'revoked_at' => 'datetime'];
     }
 
     public function getTable(): string
@@ -30,12 +32,22 @@ class AgentProfileVersion extends Model
     protected static function booted(): void
     {
         static::creating(function (AgentProfileVersion $version) {
+            if ($version->status !== VersionStatus::Inactive || $version->revoked_at !== null) {
+                throw ImmutableVersion::make();
+            }
             $version->uuid = $version->uuid ?: (string) Str::uuid();
         });
         static::updating(function (AgentProfileVersion $version) {
-            if ($version->getRawOriginal('revoked_at') !== null
-                || ! $version->isDirty('revoked_at') || $version->revoked_at === null
-                || array_diff(array_keys($version->getDirty()), self::REVOCATION) !== []) {
+            if ($version->getRawOriginal('status') === VersionStatus::Revoked->value
+                || $version->getRawOriginal('revoked_at') !== null
+                || array_diff(array_keys($version->getDirty()), self::LIFECYCLE) !== []) {
+                throw ImmutableVersion::make();
+            }
+            if ($version->status === VersionStatus::Revoked) {
+                if ($version->revoked_at === null) {
+                    throw ImmutableVersion::make();
+                }
+            } elseif ($version->isDirty(['revoked_at', 'revocation_reason', 'revoked_by_type', 'revoked_by_id'])) {
                 throw ImmutableVersion::make();
             }
         });
@@ -45,16 +57,6 @@ class AgentProfileVersion extends Model
     public function profile(): BelongsTo
     {
         return $this->belongsTo(config('agent-profiles.models.profile', AgentProfile::class), 'agent_profile_id')->withTrashed();
-    }
-
-    public function status(): VersionStatus
-    {
-        if ($this->revoked_at !== null) {
-            return VersionStatus::Revoked;
-        }
-        $profile = $this->profile()->first();
-
-        return $profile && (string) $profile->active_version_id === (string) $this->getKey() ? VersionStatus::Active : VersionStatus::Inactive;
     }
 
     public function hasIntactContent(): bool

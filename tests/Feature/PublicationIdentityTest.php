@@ -16,7 +16,8 @@ class PublicationIdentityTest extends TestCase
     public function storage_has_two_tables_and_one_published_payload(): void
     {
         $this->assertFalse(Schema::hasTable('agent_profile_version_states'));
-        $this->assertTrue(Schema::hasColumn('agent_profiles', 'active_version_id'));
+        $this->assertFalse(Schema::hasColumn('agent_profiles', 'active_version_id'));
+        $this->assertTrue(Schema::hasColumn('agent_profile_versions', 'status'));
         $this->assertTrue(Schema::hasColumn('agent_profile_versions', 'content'));
         foreach (['manifest', 'definition', 'skills', 'snapshots'] as $column) {
             $this->assertFalse(Schema::hasColumn('agent_profile_versions', $column));
@@ -74,7 +75,7 @@ class PublicationIdentityTest extends TestCase
         $base = '/api/agent-profiles/'.$profile['id'];
         $this->publish($member, $profile['id'], 1, activate: true)->assertCreated();
         $this->actingAs($member)->postJson($base.'/versions/1/revoke')->assertOk();
-        $this->assertNull(AgentProfile::query()->firstOrFail()->active_version_id);
+        $this->assertNull(AgentProfile::query()->firstOrFail()->activeVersion());
         $this->publish($member, $profile['id'], 1)->assertStatus(409);
         $version = AgentProfileVersion::query()->firstOrFail();
         $this->expectException(ImmutableVersion::class);

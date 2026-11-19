@@ -70,10 +70,10 @@ Publishing checks the current `revision`. New execution content creates version 
 
 Two tables hold the lifecycle:
 
-- `agent_profiles` holds editable settings, skill bindings through `HasSkills`, and `active_version_id`.
-- `agent_profile_versions` holds one immutable `content` payload, its `content_hash`, publication details, and write-once revocation fields.
+- `agent_profiles` holds editable settings, skill bindings through `HasSkills`, and its edit revision.
+- `agent_profile_versions` holds one immutable `content` payload, its `content_hash`, publication details, lifecycle status, and write-once revocation fields.
 
-The payload contains the definition, compiled rules, exact skill pins, external snapshots, and ownership context. The API and execution resolver read the same payload. Activation changes the profile pointer; rollback activates an earlier version without copying it. Revoking the active version clears the pointer.
+The payload contains the definition, compiled rules, exact skill pins, external snapshots, and ownership context. The API and execution resolver read the same payload. Activation marks the selected version active and marks the previous version inactive. Rollback activates an earlier version without copying it. Revoked versions cannot be activated. All transitions lock the profile first, so package-managed transitions serialize concurrent activation requests.
 
 ```php
 use Whilesmart\AgentProfiles\Services\ExecutionManifestResolver;
