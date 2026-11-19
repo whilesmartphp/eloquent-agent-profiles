@@ -21,7 +21,6 @@ use Whilesmart\AgentProfiles\Http\Requests\UnbindProfileSkillRequest;
 use Whilesmart\AgentProfiles\Http\Requests\UpdateAgentProfileRequest;
 use Whilesmart\AgentProfiles\Models\AgentProfile;
 use Whilesmart\AgentProfiles\Models\AgentProfileVersion;
-use Whilesmart\AgentProfiles\Models\AgentProfileVersionState;
 
 class AgentProfilesServiceProvider extends ServiceProvider
 {
@@ -68,7 +67,6 @@ class AgentProfilesServiceProvider extends ServiceProvider
     {
         $this->configured('models.profile', AgentProfile::class);
         $this->configured('models.version', AgentProfileVersion::class);
-        $this->configured('models.version_state', AgentProfileVersionState::class);
         $this->configured('authorizer', ProfileAuthorizer::class);
 
         foreach ((array) config('agent-profiles.validators', []) as $index => $class) {

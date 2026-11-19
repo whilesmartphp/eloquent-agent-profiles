@@ -154,7 +154,7 @@ class ManagedSkillTest extends TestCase
     }
 
     #[Test]
-    public function definition_managed_refs_must_match_a_binding_and_unbinding_advances_the_revision(): void
+    public function managed_refs_are_rejected_and_bindings_are_the_only_managed_source(): void
     {
         $version = $this->catalogue()->version(self::OWNER, 1, 'default', 'refund-policy');
         $skillId = Skill::query()->whereKey($version->skill_id)->value('uuid');
@@ -163,16 +163,14 @@ class ManagedSkillTest extends TestCase
         $this->actingAs($this->member)->putJson($base, [
             'revision' => 1,
             'definition' => $this->readyDefinition(['skills' => [['source' => 'managed', 'skill' => $skillId]]]),
-        ])->assertOk();
+        ])->assertUnprocessable()->assertJsonValidationErrors('definition.skills.0');
 
-        $this->actingAs($this->member)->getJson("{$base}/readiness")->assertJsonPath('data.issues.0.code', 'skill_not_bound');
-
-        $this->bind($version, 2)->assertCreated();
+        $this->bind($version, 1)->assertCreated();
         $this->actingAs($this->member)->getJson("{$base}/readiness")->assertJsonPath('data.ready', true);
 
-        $this->actingAs($this->member)->deleteJson("{$base}/skills/{$skillId}", ['revision' => 3])
+        $this->actingAs($this->member)->deleteJson("{$base}/skills/{$skillId}", ['revision' => 2])
             ->assertOk()
-            ->assertJsonPath('data.revision', 4);
+            ->assertJsonPath('data.revision', 3);
         $this->actingAs($this->member)->getJson("{$base}/skills")->assertJsonPath('data', []);
     }
 }

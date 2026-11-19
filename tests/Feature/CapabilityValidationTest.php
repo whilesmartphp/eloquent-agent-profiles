@@ -68,9 +68,11 @@ class CapabilityValidationTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.rules.evaluators', ['keyword']);
 
+        $actual = $response->json('data.rules.events.before_tool');
+        ksort($actual);
         $this->assertSame(
             ['invoices.read' => [], 'mail.send' => ['no-refund-promises']],
-            $response->json('data.rules.events.before_tool'),
+            $actual,
         );
     }
 

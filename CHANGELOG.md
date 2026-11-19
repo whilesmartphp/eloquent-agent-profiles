@@ -8,3 +8,4 @@
 - Fail-closed execution manifest resolution that rechecks profile, version, owner, scope and every pinned skill
 - Configurable authorizer, models, requests, resources, response formatter, controller, route groups, disabled routes and write middleware
 - Domain events dispatched after commit
+- Two lifecycle tables, one authoritative content payload, and duplicate publication reuse

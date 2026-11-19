@@ -28,7 +28,6 @@ class DefinitionSchemaTest extends TestCase
                 'action' => 'require_approval',
             ]],
             'skills' => [
-                ['source' => 'managed', 'skill' => '0b9a4c2e-8f53-4f8e-9d0e-3b3e2f1c7a10'],
                 ['source' => 'house', 'reference' => 'house-style', 'skill' => 'release-notes', 'content_hash' => 'sha256:'.str_repeat('a', 64)],
             ],
             'resources' => [['id' => 'ticket-db', 'type' => 'database', 'reference' => 'tickets', 'access' => 'read']],
@@ -109,8 +108,8 @@ class DefinitionSchemaTest extends TestCase
         $definition = $this->complete();
         $definition['purpose'] = str_repeat('x', 11);
         $definition['rules'][] = $definition['rules'][0];
-        $definition['skills'][0]['skill'] = 'not-a-uuid';
-        unset($definition['skills'][1]['content_hash']);
+        $definition['skills'][0]['skill'] = 'NOT VALID';
+        unset($definition['skills'][0]['content_hash']);
         $definition['model']['temperature'] = 3;
         $definition['limits']['max_steps'] = 0;
         $definition['resources'] = ['id' => 'x'];
@@ -120,7 +119,7 @@ class DefinitionSchemaTest extends TestCase
         $this->assertContains('length@definition.purpose', $paths);
         $this->assertContains('too_many@definition.rules', $paths);
         $this->assertContains('format@definition.skills.0.skill', $paths);
-        $this->assertContains('required@definition.skills.1.content_hash', $paths);
+        $this->assertContains('required@definition.skills.0.content_hash', $paths);
         $this->assertContains('range@definition.model.temperature', $paths);
         $this->assertContains('range@definition.limits.max_steps', $paths);
         $this->assertContains('type@definition.resources', $paths);

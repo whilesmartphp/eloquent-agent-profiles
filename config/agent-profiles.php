@@ -14,7 +14,6 @@ use Whilesmart\AgentProfiles\Http\Resources\ProfileSkillResource;
 use Whilesmart\AgentProfiles\Http\Responses\DefaultResponseFormatter;
 use Whilesmart\AgentProfiles\Models\AgentProfile;
 use Whilesmart\AgentProfiles\Models\AgentProfileVersion;
-use Whilesmart\AgentProfiles\Models\AgentProfileVersionState;
 use Whilesmart\AgentProfiles\Validators\ModelProviderValidator;
 use Whilesmart\AgentProfiles\Validators\ResourceTypeValidator;
 use Whilesmart\AgentProfiles\Validators\RuleEvaluatorValidator;
@@ -44,7 +43,6 @@ return [
     'tables' => [
         'profiles' => env('AGENT_PROFILES_TABLE', 'agent_profiles'),
         'versions' => env('AGENT_PROFILE_VERSIONS_TABLE', 'agent_profile_versions'),
-        'version_states' => env('AGENT_PROFILE_VERSION_STATES_TABLE', 'agent_profile_version_states'),
     ],
 
     'default_scope_key' => 'default',
@@ -52,7 +50,6 @@ return [
     'models' => [
         'profile' => AgentProfile::class,
         'version' => AgentProfileVersion::class,
-        'version_state' => AgentProfileVersionState::class,
     ],
 
     'requests' => [

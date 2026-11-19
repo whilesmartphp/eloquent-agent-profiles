@@ -52,20 +52,11 @@ class PublicationPlanner
         [$managed, $managedIssues] = $this->managed->pin($profile, $actor);
         array_push($issues, ...$managedIssues);
 
-        $bound = array_column($managed, 'skill_uuid');
         $external = [];
         $snapshots = [];
 
         foreach ($definition['skills'] as $index => $ref) {
             $path = "definition.skills.{$index}";
-
-            if ($ref['source'] === DefinitionSchema::MANAGED_SOURCE) {
-                if (! in_array($ref['skill'], array_map('strtolower', $bound), true)) {
-                    $issues[] = Issue::error('skill_not_bound', 'The definition names a managed skill that has no available binding on this profile.', "{$path}.skill");
-                }
-
-                continue;
-            }
 
             $result = $this->external->pin($ref, $path, $profile, $actor);
             if ($result instanceof Issue) {

@@ -28,7 +28,7 @@ class LifecycleTest extends TestCase
         $this->actingAs($member)->postJson("{$base}/versions/1/activate")->assertOk()->assertJsonPath('data.status', 'active');
         $this->actingAs($member)->getJson($base)->assertJsonPath('data.active_version', 1);
 
-        $this->actingAs($member)->putJson($base, ['revision' => 1, 'name' => 'Second'])->assertOk();
+        $this->actingAs($member)->putJson($base, ['revision' => 1, 'definition' => $this->readyDefinition(['purpose' => 'Second'])])->assertOk();
         $this->publish($member, $profile['id'], 2, activate: true)->assertCreated()->assertJsonPath('data.status', 'active');
 
         $this->actingAs($member)->getJson("{$base}/versions/1")->assertJsonPath('data.status', 'inactive');
@@ -107,10 +107,10 @@ class LifecycleTest extends TestCase
         $version = AgentProfileVersion::query()->firstOrFail();
         $this->assertSame(1, $resolver->resolve($version, $member)->version->number);
 
-        DB::table('agent_profile_versions')->update(['manifest' => json_encode(array_replace_recursive($version->manifest, ['definition' => ['purpose' => 'Tampered']]))]);
+        DB::table('agent_profile_versions')->update(['content' => json_encode(array_replace_recursive($version->content, ['definition' => ['purpose' => 'Tampered']]))]);
         $this->assertUnavailable(fn () => $resolver->resolve($version->fresh(), $member));
 
-        DB::table('agent_profile_versions')->update(['manifest' => json_encode($version->manifest)]);
+        DB::table('agent_profile_versions')->update(['content' => json_encode($version->content)]);
         DB::table('agent_profiles')->update(['owner_id' => '2']);
         $this->assertUnavailable(fn () => $resolver->resolve($version->fresh(), $member));
 

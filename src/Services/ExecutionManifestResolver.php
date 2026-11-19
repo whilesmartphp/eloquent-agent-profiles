@@ -30,11 +30,6 @@ class ExecutionManifestResolver
 
     public function resolve(AgentProfileVersion $version, ?Authenticatable $actor = null): ExecutionManifest
     {
-        $owner = $version->profile()->first();
-        if ($owner instanceof AgentProfile) {
-            $this->gate->ensure($actor, 'resolve', $owner);
-        }
-
         $profile = $this->liveProfile($version);
         $this->gate->ensure($actor, 'resolve', $profile);
 
@@ -53,7 +48,7 @@ class ExecutionManifestResolver
             throw ProfileUnavailable::because('The pinned skills of this version cannot be combined.');
         }
 
-        return new ExecutionManifest($profile, $version, (array) $version->manifest['definition'], (array) $version->manifest['rules'], $pack);
+        return new ExecutionManifest($profile, $version, (array) $version->content['definition'], (array) $version->content['rules'], $pack);
     }
 
     public function resolveActive(AgentProfile $profile, ?Authenticatable $actor = null): ExecutionManifest
@@ -96,11 +91,11 @@ class ExecutionManifestResolver
             throw ProfileUnavailable::because('The agent profile was deleted.');
         }
 
-        if (! $version->hasIntactManifest()) {
+        if (! $version->hasIntactContent()) {
             throw ProfileUnavailable::because('The stored manifest no longer matches its hash.');
         }
 
-        $pinned = (array) ($version->manifest['profile'] ?? []);
+        $pinned = (array) ($version->content['owner'] ?? []);
         if (($pinned['owner_type'] ?? null) !== $profile->owner_type
             || ($pinned['owner_id'] ?? null) !== (string) $profile->owner_id
             || ($pinned['scope_key'] ?? null) !== $profile->scope_key) {
@@ -117,7 +112,7 @@ class ExecutionManifestResolver
     {
         $skills = [];
         $issues = [];
-        $pinned = (array) ($version->manifest['skills'] ?? []);
+        $pinned = (array) ($version->content['skills'] ?? []);
 
         foreach ((array) ($pinned['managed'] ?? []) as $index => $pin) {
             try {
@@ -129,7 +124,7 @@ class ExecutionManifestResolver
             }
         }
 
-        $snapshots = (array) ($version->snapshots ?? []);
+        $snapshots = (array) ($version->content['snapshots'] ?? []);
         foreach ((array) ($pinned['external'] ?? []) as $index => $pin) {
             try {
                 $skills[] = $this->external->restore((array) $pin, $snapshots[$this->planner->snapshotKey((array) $pin)] ?? null);

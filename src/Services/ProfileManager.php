@@ -68,6 +68,9 @@ class ProfileManager
         return DB::transaction(function () use ($profile, $expectedRevision, $changes, $actor) {
             $locked = $this->lock($profile, $expectedRevision);
             $locked->fill($changes);
+            if (! $locked->isDirty()) {
+                return $locked;
+            }
             $locked->revision = $locked->revision + 1;
             $locked->save();
 

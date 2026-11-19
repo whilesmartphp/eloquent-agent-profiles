@@ -28,8 +28,6 @@ final class DefinitionSchema
 
     private const SKILL_NAME = '/^[a-z0-9]+(-[a-z0-9]+)*$/';
 
-    private const UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
-
     private const HASH = '/^(sha256:)?[0-9a-f]{64}$/';
 
     private const MODEL_NAME = '/^[A-Za-z0-9][A-Za-z0-9._:\/@-]{0,127}$/';
@@ -143,14 +141,12 @@ final class DefinitionSchema
                 'config' => (array) ($rule['config'] ?? []),
                 'action' => $rule['action'] ?? 'block',
             ], array_values((array) ($definition['rules'] ?? []))),
-            'skills' => array_map(fn (array $ref) => ($ref['source'] ?? null) === self::MANAGED_SOURCE
-                ? ['source' => self::MANAGED_SOURCE, 'skill' => strtolower($ref['skill'])]
-                : [
-                    'source' => $ref['source'],
-                    'reference' => $ref['reference'],
-                    'skill' => $ref['skill'],
-                    'content_hash' => $ref['content_hash'],
-                ], array_values((array) ($definition['skills'] ?? []))),
+            'skills' => array_map(fn (array $ref) => [
+                'source' => $ref['source'],
+                'reference' => $ref['reference'],
+                'skill' => $ref['skill'],
+                'content_hash' => $ref['content_hash'],
+            ], array_values((array) ($definition['skills'] ?? []))),
             'resources' => array_map(fn (array $resource) => [
                 'id' => $resource['id'],
                 'type' => $resource['type'],
@@ -342,16 +338,15 @@ final class DefinitionSchema
             }
 
             if ($source === self::MANAGED_SOURCE) {
-                $this->object($ref, $path, ['source', 'skill']);
-                $skill = $this->pattern($ref['skill'] ?? null, "{$path}.skill", self::UUID, 36, true);
-                $key = 'managed:'.strtolower((string) $skill);
-            } else {
-                $this->object($ref, $path, ['source', 'reference', 'skill', 'content_hash']);
-                $reference = $this->reference($ref['reference'] ?? null, "{$path}.reference");
-                $skill = $this->pattern($ref['skill'] ?? null, "{$path}.skill", self::SKILL_NAME, 64, true);
-                $this->pattern($ref['content_hash'] ?? null, "{$path}.content_hash", self::HASH, 71, true);
-                $key = "{$source}:{$reference}:{$skill}";
+                $this->add('managed_skill_binding', 'Assign managed skills through HasSkills bindings.', $path);
+
+                continue;
             }
+            $this->object($ref, $path, ['source', 'reference', 'skill', 'content_hash']);
+            $reference = $this->reference($ref['reference'] ?? null, "{$path}.reference");
+            $skill = $this->pattern($ref['skill'] ?? null, "{$path}.skill", self::SKILL_NAME, 64, true);
+            $this->pattern($ref['content_hash'] ?? null, "{$path}.content_hash", self::HASH, 71, true);
+            $key = "{$source}:{$reference}:{$skill}";
 
             if ($skill !== null) {
                 if (in_array($key, $seen, true)) {

@@ -43,7 +43,6 @@ A draft definition is a JSON object. Every object rejects keys it does not decla
     "action": "block"
   }],
   "skills": [
-    { "source": "managed", "skill": "<skill UUID>" },
     { "source": "house", "reference": "house-style", "skill": "release-notes", "content_hash": "sha256:..." }
   ],
   "resources": [{ "id": "ledger", "type": "database", "reference": "ledger-main", "access": "read" }],
@@ -61,13 +60,20 @@ Published rules are compiled into per-event and per-tool lookups (`Definition\Ru
 
 ## Skills
 
-`AgentProfile` uses `Whilesmart\Skills\Traits\HasSkills`. Bindings are the draft: binding a skill version goes through `SkillVersionResolver` with the profile's owner and `scope_key` and requires current availability, so skills of another owner or scope, deleted skills and revoked versions are refused. Publishing pins every current binding to its exact version and content hash. A `managed` entry in `definition.skills` must match a binding.
+`AgentProfile` uses `Whilesmart\Skills\Traits\HasSkills`. Bindings are the draft: binding a skill version goes through `SkillVersionResolver` with the profile's owner and `scope_key` and requires current availability, so skills of another owner or scope, deleted skills and revoked versions are refused. Publishing pins every current binding to its exact version and content hash. Managed entries in `definition.skills` are rejected; use the binding methods or skill routes.
 
 External skills are off by default. Map a source key to a class implementing `Whilesmart\AgentProfiles\Contracts\ExternalSkillProvider` in `external_skills.providers`. At publication the provider's skill must match the approved `content_hash` and pass validation; it is kept as a bounded snapshot (`external_skills.max_snapshot_bytes`). Resolving a published version restores the snapshot and never fetches again. Nothing is imported into the catalogue.
 
 ## Versions and resolution
 
-Publishing needs the current draft `revision` and creates version `n + 1` with a canonical manifest and `sha256:` hash. Versions cannot be updated or deleted. Their status (`inactive`, `active`, `revoked`) lives in a separate table. One version per profile is active; revocation is terminal.
+Publishing checks the current `revision`. New execution content creates version `n + 1`; unchanged content returns the existing version with HTTP 200. Renaming a profile does not create a new version. Content matching a revoked version cannot be republished.
+
+Two tables hold the lifecycle:
+
+- `agent_profiles` holds editable settings, skill bindings through `HasSkills`, and `active_version_id`.
+- `agent_profile_versions` holds one immutable `content` payload, its `content_hash`, publication details, and write-once revocation fields.
+
+The payload contains the definition, compiled rules, exact skill pins, external snapshots, and ownership context. The API and execution resolver read the same payload. Activation changes the profile pointer; rollback activates an earlier version without copying it. Revoking the active version clears the pointer.
 
 ```php
 use Whilesmart\AgentProfiles\Services\ExecutionManifestResolver;
@@ -80,7 +86,7 @@ $manifest->skills;        // Whilesmart\Skillpack\Pack of the pinned skills
 $manifest->skillTools();  // list_skills, read_skill and read_reference from the portable core
 ```
 
-Resolution throws `ProfileUnavailable` unless the profile exists, the version is active, its manifest still matches its hash, the profile still has the owner and scope it was published under, and every pinned managed skill still resolves for that owner and scope with the same content. Activation runs the same skill checks.
+Resolution throws `ProfileUnavailable` unless the profile exists, the version is active, its content still matches its hash, the profile still has the owner and scope it was published under, and every pinned managed skill still resolves for that owner and scope with the same content. Activation runs the same skill checks.
 
 ## API
 
@@ -131,4 +137,5 @@ The default owner-access bridge allows only the configured `default_scope_key`. 
 
 `AgentProfile` stores editable `definition` settings and a `revision` counter for concurrent edits. Publishing copies those settings into an immutable version. Profiles have a stable `uuid` and generated `slug`; either resolves the profile route. Slugs remain stable when names change.
 
-Version state is stored separately so activation and revocation can change without updating the published definition or manifest. The state row holds status, transition timestamps, the changing actor, and the revocation reason. It records current lifecycle state, not a transition history.
+
+All lifecycle mutations lock the profile first. Application code must use the profile skill methods or HTTP routes for binding edits; raw relation and database writes bypass revision checks. Transition events can be persisted by the host when activation history is required.

@@ -52,9 +52,9 @@ class PublicationTest extends TestCase
             ->assertJsonPath('data.published_by.id', (string) $member->getKey());
 
         $version = AgentProfileVersion::query()->firstOrFail();
-        $this->assertSame($version->manifest_hash, Canonical::hash($version->manifest));
-        $this->assertSame('whilesmart.agent-profile/1', $version->manifest['schema']);
-        $this->assertSame(['managed' => [], 'external' => []], $version->manifest['skills']);
+        $this->assertSame($version->content_hash, Canonical::hash($version->content));
+        $this->assertSame('whilesmart.agent-profile/1', $version->content['schema']);
+        $this->assertSame(['managed' => [], 'external' => []], $version->content['skills']);
         Event::assertDispatched(AgentProfileVersionPublished::class);
     }
 
@@ -103,7 +103,7 @@ class PublicationTest extends TestCase
         $version = AgentProfileVersion::query()->firstOrFail();
 
         try {
-            $version->update(['definition' => ['purpose' => 'Changed']]);
+            $version->update(['content' => ['definition' => ['purpose' => 'Changed']]]);
             $this->fail('A version was updated.');
         } catch (ImmutableVersion) {
         }
@@ -114,7 +114,7 @@ class PublicationTest extends TestCase
         } catch (ImmutableVersion) {
         }
 
-        $this->assertSame('Answer billing questions for customers.', $version->fresh()->definition['purpose']);
+        $this->assertSame('Answer billing questions for customers.', $version->fresh()->content['definition']['purpose']);
     }
 
     #[Test]

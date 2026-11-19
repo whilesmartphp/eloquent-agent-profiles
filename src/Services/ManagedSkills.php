@@ -55,8 +55,7 @@ class ManagedSkills
     {
         $version = $this->resolve($profile, (string) ($pin['skill_version_uuid'] ?? ''), $actor);
 
-        if ((string) $version->getKey() !== (string) ($pin['skill_version_id'] ?? '')
-            || ! hash_equals((string) ($pin['content_hash'] ?? ''), (string) $version->content_hash)) {
+        if (! hash_equals((string) ($pin['content_hash'] ?? ''), (string) $version->content_hash)) {
             throw SkillUnavailable::make('The pinned skill version no longer matches its published content.');
         }
 
@@ -168,7 +167,6 @@ class ManagedSkills
         return [
             'skill_uuid' => (string) SkillsConfig::query('skill')->whereKey($version->skill_id)->value('uuid'),
             'skill_version_uuid' => (string) $version->uuid,
-            'skill_version_id' => (string) $version->getKey(),
             'name' => (string) $version->name,
             'number' => (int) $version->number,
             'content_hash' => (string) $version->content_hash,

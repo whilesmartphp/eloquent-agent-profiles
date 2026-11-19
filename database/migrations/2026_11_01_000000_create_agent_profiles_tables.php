@@ -10,7 +10,6 @@ return new class extends Migration
     {
         $profiles = config('agent-profiles.tables.profiles', 'agent_profiles');
         $versions = config('agent-profiles.tables.versions', 'agent_profile_versions');
-        $states = config('agent-profiles.tables.version_states', 'agent_profile_version_states');
 
         Schema::create($profiles, function (Blueprint $table) {
             $table->id();
@@ -22,6 +21,7 @@ return new class extends Migration
             $table->string('name', 160);
             $table->text('description')->nullable();
             $table->unsignedInteger('revision')->default(1);
+            $table->unsignedBigInteger('active_version_id')->nullable()->index();
             $table->json('definition');
             $table->json('metadata')->nullable();
             $table->timestamps();
@@ -36,39 +36,25 @@ return new class extends Migration
             $table->foreignId('agent_profile_id')->constrained($profiles)->cascadeOnDelete();
             $table->unsignedInteger('number');
             $table->unsignedInteger('source_revision');
-            $table->json('definition');
-            $table->json('skills');
-            $table->json('manifest');
-            $table->string('manifest_hash', 71);
-            $table->longText('snapshots')->nullable();
+            $table->json('content');
+            $table->string('content_hash', 71);
+            $table->timestamp('revoked_at')->nullable();
+            $table->text('revocation_reason')->nullable();
+            $table->string('revoked_by_type')->nullable();
+            $table->string('revoked_by_id', 64)->nullable();
             $table->string('published_by_type')->nullable();
             $table->string('published_by_id', 64)->nullable();
             $table->timestamp('published_at');
             $table->timestamp('created_at')->nullable();
 
             $table->unique(['agent_profile_id', 'number']);
+            $table->unique(['agent_profile_id', 'content_hash']);
         });
 
-        Schema::create($states, function (Blueprint $table) use ($profiles, $versions) {
-            $table->id();
-            $table->foreignId('agent_profile_version_id')->unique()->constrained($versions)->cascadeOnDelete();
-            $table->foreignId('agent_profile_id')->constrained($profiles)->cascadeOnDelete();
-            $table->string('status', 20);
-            $table->timestamp('activated_at')->nullable();
-            $table->timestamp('deactivated_at')->nullable();
-            $table->timestamp('revoked_at')->nullable();
-            $table->text('revocation_reason')->nullable();
-            $table->string('changed_by_type')->nullable();
-            $table->string('changed_by_id', 64)->nullable();
-            $table->timestamps();
-
-            $table->index(['agent_profile_id', 'status']);
-        });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists(config('agent-profiles.tables.version_states', 'agent_profile_version_states'));
         Schema::dropIfExists(config('agent-profiles.tables.versions', 'agent_profile_versions'));
         Schema::dropIfExists(config('agent-profiles.tables.profiles', 'agent_profiles'));
     }

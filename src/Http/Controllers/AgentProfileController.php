@@ -143,7 +143,7 @@ class AgentProfileController extends Controller
         return $this->attempt(function () use ($request, $agent_profile) {
             $version = $this->publisher->publish($agent_profile, (int) $request->input('revision'), $request->user(), $request->boolean('activate'));
 
-            return $this->responses->success($this->resource('version', $version->fresh(['state'])), 201);
+            return $this->responses->success($this->resource('version', $version->fresh()), $version->wasRecentlyCreated ? 201 : 200);
         });
     }
 
@@ -153,7 +153,7 @@ class AgentProfileController extends Controller
             $this->gate->ensure($request->user(), 'view', $agent_profile);
 
             $perPage = max(1, min(100, (int) $request->input('per_page', 25)));
-            $versions = $agent_profile->versions()->with('state')->orderByDesc('number')->paginate($perPage);
+            $versions = $agent_profile->versions()->orderByDesc('number')->paginate($perPage);
 
             return $this->responses->success($this->resourceClass('version')::collection($versions)->response()->getData(true));
         });
@@ -174,7 +174,7 @@ class AgentProfileController extends Controller
             $this->gate->ensure($request->user(), 'activate', $agent_profile);
             $found = $this->publisher->activate($agent_profile, $this->findVersion($agent_profile, $version), $request->user());
 
-            return $this->responses->success($this->resource('version', $found->fresh(['state'])));
+            return $this->responses->success($this->resource('version', $found->fresh()));
         });
     }
 
@@ -184,7 +184,7 @@ class AgentProfileController extends Controller
             $this->gate->ensure($request->user(), 'activate', $agent_profile);
             $found = $this->publisher->deactivate($agent_profile, $this->findVersion($agent_profile, $version), $request->user());
 
-            return $this->responses->success($this->resource('version', $found->fresh(['state'])));
+            return $this->responses->success($this->resource('version', $found->fresh()));
         });
     }
 
@@ -195,7 +195,7 @@ class AgentProfileController extends Controller
         return $this->attempt(function () use ($request, $agent_profile, $version) {
             $found = $this->publisher->revoke($agent_profile, $this->findVersion($agent_profile, $version), $request->input('reason'), $request->user());
 
-            return $this->responses->success($this->resource('version', $found->fresh(['state'])));
+            return $this->responses->success($this->resource('version', $found->fresh()));
         });
     }
 
@@ -210,7 +210,7 @@ class AgentProfileController extends Controller
 
     protected function findVersion(AgentProfile $profile, int $number): AgentProfileVersion
     {
-        return $profile->versions()->with('state')->where('number', $number)->firstOrFail();
+        return $profile->versions()->where('number', $number)->firstOrFail();
     }
 
     protected function attempt(Closure $action): JsonResponse

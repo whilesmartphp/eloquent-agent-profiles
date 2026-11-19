@@ -10,8 +10,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Whilesmart\AgentProfiles\Enums\VersionStatus;
 use Whilesmart\AgentProfiles\Events\AgentProfileSkillsChanged;
+use Whilesmart\AgentProfiles\Exceptions\ImmutableVersion;
 use Whilesmart\AgentProfiles\Exceptions\StaleRevision;
 use Whilesmart\AgentProfiles\Services\ProfileGate;
 use Whilesmart\Skills\Models\Skill;
@@ -70,6 +70,12 @@ class AgentProfile extends Model
 
     protected static function booted(): void
     {
+        static::updating(function (AgentProfile $profile) {
+            if ($profile->isDirty(['owner_type', 'owner_id', 'scope_key', 'uuid'])) {
+                throw ImmutableVersion::make();
+            }
+        });
+
         static::creating(function (AgentProfile $profile) {
             $profile->uuid = $profile->uuid ?: (string) Str::uuid();
             $profile->slug = $profile->slug ?: (Str::slug($profile->name) ?: 'agent').'-'.$profile->uuid;
@@ -86,7 +92,11 @@ class AgentProfile extends Model
             if ($locked->revision !== $this->revision) {
                 throw new StaleRevision($this->revision, $locked->revision);
             }
+            $previous = $locked->skillBindings()->where('skill_id', $version->skill_id)->value('skill_version_id');
             $binding = $locked->assignPinnedSkillVersion($version, $actor);
+            if ((string) $previous === (string) $binding->skill_version_id) {
+                return $binding;
+            }
             $locked->revision++;
             $locked->save();
             $this->revision = $locked->revision;
@@ -126,16 +136,9 @@ class AgentProfile extends Model
         return $this->hasMany(config('agent-profiles.models.version', AgentProfileVersion::class), 'agent_profile_id');
     }
 
-    public function versionStates(): HasMany
-    {
-        return $this->hasMany(config('agent-profiles.models.version_state', AgentProfileVersionState::class), 'agent_profile_id');
-    }
-
     public function activeVersion(): ?AgentProfileVersion
     {
-        $state = $this->versionStates()->where('status', VersionStatus::Active->value)->first();
-
-        return $state ? $this->versions()->whereKey($state->agent_profile_version_id)->first() : null;
+        return $this->active_version_id === null ? null : $this->versions()->whereKey($this->active_version_id)->whereNull('revoked_at')->first();
     }
 
     public function scopeForOwner(Builder $query, string $ownerType, int|string $ownerId): Builder

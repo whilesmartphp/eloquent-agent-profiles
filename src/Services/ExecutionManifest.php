@@ -43,7 +43,7 @@ final class ExecutionManifest
             'profile_id' => $this->profile->uuid,
             'version' => $this->version->number,
             'version_id' => $this->version->uuid,
-            'manifest_hash' => $this->version->manifest_hash,
+            'content_hash' => $this->version->content_hash,
             'definition' => $this->definition,
             'rules' => $this->rules,
             'skills' => $this->skills->index(),
